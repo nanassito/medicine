@@ -1,40 +1,44 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/nanassito/medicine/pkg/handlers"
+	"github.com/nanassito/medicine/pkg/models"
+	sheets "google.golang.org/api/sheets/v4"
 )
 
 const Year = 365 * 24 * time.Hour
 
 func main() {
+	sheets.NewService(context.Background())
 	r := mux.NewRouter()
 	handler := &handlers.MedicineHandler{
-		People: map[handlers.Person]*handlers.PersonCfg{
-			handlers.Aline: {
+		People: map[models.Person]*models.PersonCfg{
+			models.Aline: {
 				Birth:    time.Date(1988, 01, 28, 0, 0, 0, 0, time.UTC),
-				NextDose: map[handlers.Medicine]time.Time{},
+				NextDose: map[models.Medicine]time.Time{},
 			},
-			handlers.Dorian: {
+			models.Dorian: {
 				Birth:    time.Date(1989, 5, 9, 0, 0, 0, 0, time.UTC),
-				NextDose: map[handlers.Medicine]time.Time{},
+				NextDose: map[models.Medicine]time.Time{},
 			},
-			handlers.Zaya: {
+			models.Zaya: {
 				Birth:    time.Date(2021, 2, 7, 0, 0, 0, 0, time.UTC),
-				NextDose: map[handlers.Medicine]time.Time{},
+				NextDose: map[models.Medicine]time.Time{},
 			},
-			handlers.Azel: {
+			models.Azel: {
 				Birth:    time.Date(2023, 6, 27, 0, 0, 0, 0, time.UTC),
-				NextDose: map[handlers.Medicine]time.Time{},
+				NextDose: map[models.Medicine]time.Time{},
 			},
 		},
-		Medicine: map[handlers.Medicine]*handlers.MedicineCfg{
-			handlers.ChildrenIbuprofen: {
-				Posology: []handlers.PosologyEntry{
+		Medicine: map[models.Medicine]*models.MedicineCfg{
+			models.ChildrenIbuprofen: {
+				Posology: []models.PosologyEntry{
 					{
 						OlderThan: 0 * Year,
 						Interval:  8 * time.Hour,
@@ -67,8 +71,8 @@ func main() {
 					},
 				},
 			},
-			handlers.InfantAcetaminophen: {
-				Posology: []handlers.PosologyEntry{
+			models.InfantAcetaminophen: {
+				Posology: []models.PosologyEntry{
 					{
 						OlderThan: 0 * Year,
 						Interval:  6 * time.Hour,

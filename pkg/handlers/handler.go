@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/nanassito/medicine/pkg/models"
 )
 
 var (
@@ -16,43 +17,12 @@ var (
 	ErrTooSoon  = errors.New("too soon to take another dose")
 )
 
-type Person string
-
-const (
-	Aline  Person = "Aline"
-	Dorian Person = "Dorian"
-	Zaya   Person = "Zaya"
-	Azel   Person = "Azel"
-)
-
-type Medicine string
-
-const (
-	ChildrenIbuprofen   Medicine = "ChildrenIbuprofen"
-	InfantAcetaminophen Medicine = "InfantAcetaminophen"
-)
-
-type PosologyEntry struct {
-	OlderThan time.Duration
-	Interval  time.Duration
-	Quantity  string
-}
-
-type PersonCfg struct {
-	Birth    time.Time
-	NextDose map[Medicine]time.Time
-}
-
-type MedicineCfg struct {
-	Posology []PosologyEntry
-}
-
 type MedicineHandler struct {
-	People   map[Person]*PersonCfg
-	Medicine map[Medicine]*MedicineCfg
+	People   map[models.Person]*models.PersonCfg
+	Medicine map[models.Medicine]*models.MedicineCfg
 }
 
-func getPosology(person PersonCfg, medicine MedicineCfg) (PosologyEntry, error) {
+func getPosology(person models.PersonCfg, medicine models.MedicineCfg) (models.PosologyEntry, error) {
 	sort.Slice(medicine.Posology, func(i, j int) bool {
 		// Sorted from older to younger so the first valid entry is the correct one.
 		return medicine.Posology[i].OlderThan > medicine.Posology[j].OlderThan
@@ -62,10 +32,10 @@ func getPosology(person PersonCfg, medicine MedicineCfg) (PosologyEntry, error) 
 			return entry, nil
 		}
 	}
-	return PosologyEntry{}, ErrTooYoung
+	return models.PosologyEntry{}, ErrTooYoung
 }
 
-func nextDose(person PersonCfg, medicineName Medicine, medicine MedicineCfg) (canTakeAfter time.Time, qty string, err error) {
+func nextDose(person models.PersonCfg, medicineName models.Medicine, medicine models.MedicineCfg) (canTakeAfter time.Time, qty string, err error) {
 	posology, err := getPosology(person, medicine)
 	if err != nil {
 		return time.Time{}, "", err
@@ -84,13 +54,13 @@ func nextDose(person PersonCfg, medicineName Medicine, medicine MedicineCfg) (ca
 func (h *MedicineHandler) take(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slog.Info("take", "vars", vars)
-	medicineName := Medicine(vars["medicine"])
+	medicineName := models.Medicine(vars["medicine"])
 	medicine, ok := h.Medicine[medicineName]
 	if !ok {
 		http.Error(w, "Medicine not found", http.StatusNotFound)
 		return
 	}
-	personName := Person(vars["person"])
+	personName := models.Person(vars["person"])
 	person, ok := h.People[personName]
 	if !ok {
 		http.Error(w, "Person not found", http.StatusNotFound)
@@ -122,13 +92,13 @@ func (h *MedicineHandler) take(w http.ResponseWriter, r *http.Request) {
 func (h *MedicineHandler) check(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slog.Info("check", "vars", vars)
-	medicineName := Medicine(vars["medicine"])
+	medicineName := models.Medicine(vars["medicine"])
 	medicine, ok := h.Medicine[medicineName]
 	if !ok {
 		http.Error(w, "Medicine not found", http.StatusNotFound)
 		return
 	}
-	personName := Person(vars["person"])
+	personName := models.Person(vars["person"])
 	person, ok := h.People[personName]
 	if !ok {
 		http.Error(w, "Person not found", http.StatusNotFound)
@@ -152,7 +122,7 @@ func (h *MedicineHandler) check(w http.ResponseWriter, r *http.Request) {
 func (h *MedicineHandler) medicineSelect(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slog.Info("selection", "vars", vars)
-	medicineName := Medicine(vars["medicine"])
+	medicineName := models.Medicine(vars["medicine"])
 	if _, ok := h.Medicine[medicineName]; !ok {
 		http.Error(w, "Medicine not found", http.StatusNotFound)
 		return
