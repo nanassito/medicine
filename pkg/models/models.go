@@ -1,34 +1,26 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Person string
-
-const (
-	Aline  Person = "Aline"
-	Dorian Person = "Dorian"
-	Zaya   Person = "Zaya"
-	Azel   Person = "Azel"
-)
-
 type Medicine string
 
-const (
-	ChildrenIbuprofen   Medicine = "ChildrenIbuprofen"
-	InfantAcetaminophen Medicine = "InfantAcetaminophen"
-)
-
 type PosologyEntry struct {
-	OlderThan time.Duration
-	Interval  time.Duration
-	Quantity  string
+	HeavierThan      int64         `sheet:"Minimum Weight"`
+	OlderThan        time.Duration `sheet:"Minimum Age"`
+	Dose             string        `sheet:"Dose"`
+	DoseInterval     time.Duration `sheet:"Dose interval"`
+	MaxDoses         int64         `sheet:"Max doses"`
+	MaxDosesInterval time.Duration `sheet:"Interval"`
 }
 
 type PersonCfg struct {
-	Birth    time.Time
-	NextDose map[Medicine]time.Time
+	Birth  time.Time `sheet:"Birthdate"`
+	Weight int64     `sheet:"Weight"`
 }
 
 type MedicineCfg struct {
-	Posology []PosologyEntry
+	Posology []*PosologyEntry
 }

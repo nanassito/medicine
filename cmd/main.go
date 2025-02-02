@@ -2,90 +2,45 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
-	"time"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/nanassito/medicine/pkg/handlers"
-	"github.com/nanassito/medicine/pkg/models"
-	sheets "google.golang.org/api/sheets/v4"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
+	"google.golang.org/api/sheets/v4"
 )
 
-const Year = 365 * 24 * time.Hour
+func mustGoogleService() *sheets.Service {
+	credentials, err := os.ReadFile("/Users/dorian.jaminaisgrellier/Downloads/medicine-449623-ba166d49b718.json")
+	if err != nil {
+		log.Fatal("unable to read key file:", err)
+	}
+
+	scopes := []string{
+		"https://www.googleapis.com/auth/spreadsheets.readonly",
+	}
+	config, err := google.JWTConfigFromJSON(credentials, scopes...)
+	if err != nil {
+		log.Fatal("unable to create JWT configuration:", err)
+	}
+
+	ctx := context.Background()
+	srv, err := sheets.NewService(ctx, option.WithHTTPClient(config.Client(ctx)))
+	if err != nil {
+		log.Fatalf("unable to retrieve sheets service: %v", err)
+	}
+	return srv
+}
 
 func main() {
-	sheets.NewService(context.Background())
 	r := mux.NewRouter()
-	handler := &handlers.MedicineHandler{
-		People: map[models.Person]*models.PersonCfg{
-			models.Aline: {
-				Birth:    time.Date(1988, 01, 28, 0, 0, 0, 0, time.UTC),
-				NextDose: map[models.Medicine]time.Time{},
-			},
-			models.Dorian: {
-				Birth:    time.Date(1989, 5, 9, 0, 0, 0, 0, time.UTC),
-				NextDose: map[models.Medicine]time.Time{},
-			},
-			models.Zaya: {
-				Birth:    time.Date(2021, 2, 7, 0, 0, 0, 0, time.UTC),
-				NextDose: map[models.Medicine]time.Time{},
-			},
-			models.Azel: {
-				Birth:    time.Date(2023, 6, 27, 0, 0, 0, 0, time.UTC),
-				NextDose: map[models.Medicine]time.Time{},
-			},
-		},
-		Medicine: map[models.Medicine]*models.MedicineCfg{
-			models.ChildrenIbuprofen: {
-				Posology: []models.PosologyEntry{
-					{
-						OlderThan: 0 * Year,
-						Interval:  8 * time.Hour,
-						Quantity:  "3ml",
-					},
-					{
-						OlderThan: 2 * Year,
-						Interval:  8 * time.Hour,
-						Quantity:  "5ml",
-					},
-					{
-						OlderThan: 4 * Year,
-						Interval:  8 * time.Hour,
-						Quantity:  "7.5ml",
-					},
-					{
-						OlderThan: 6 * Year,
-						Interval:  8 * time.Hour,
-						Quantity:  "10ml",
-					},
-					{
-						OlderThan: 9 * Year,
-						Interval:  8 * time.Hour,
-						Quantity:  "12.5ml",
-					},
-					{
-						OlderThan: 11 * Year,
-						Interval:  8 * time.Hour,
-						Quantity:  "15ml",
-					},
-				},
-			},
-			models.InfantAcetaminophen: {
-				Posology: []models.PosologyEntry{
-					{
-						OlderThan: 0 * Year,
-						Interval:  6 * time.Hour,
-						Quantity:  "3ml",
-					},
-					{
-						OlderThan: 2 * Year,
-						Interval:  6 * time.Hour,
-						Quantity:  "5ml",
-					},
-				},
-			},
-		},
+	handler, err := handlers.NewMedicineHandler(mustGoogleService())
+	if err != nil {
+		log.Fatal("unable to start the service:", err)
 	}
 	slog.Info("config", "handler", handler)
 	handler.Register(r)
