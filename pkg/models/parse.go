@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,11 +19,17 @@ func Unmarshall(row, header []interface{}, v any) error {
 		if tag == "" {
 			continue
 		}
+		parts := strings.SplitN(tag, ",", 2)
+		columnName := parts[0]
+		format := ""
+		if len(parts) > 1 {
+			format = parts[1]
+		}
 
 		var colIndex int
 		found := false
 		for j, h := range header {
-			if h.(string) == tag {
+			if h.(string) == columnName {
 				colIndex = j
 				found = true
 				break
@@ -30,7 +37,7 @@ func Unmarshall(row, header []interface{}, v any) error {
 		}
 
 		if !found {
-			return fmt.Errorf("header %s not found", tag)
+			return fmt.Errorf("header %s not found", columnName)
 		}
 
 		cellValue := row[colIndex]
@@ -56,7 +63,10 @@ func Unmarshall(row, header []interface{}, v any) error {
 		case reflect.Struct:
 			switch fieldValue.Type() {
 			case reflect.TypeOf(time.Time{}):
-				parsedTime, err := time.Parse(time.DateOnly, cellValue.(string))
+				if format == "" {
+					format = time.DateOnly
+				}
+				parsedTime, err := time.Parse(format, cellValue.(string))
 				if err != nil {
 					return fmt.Errorf("unable to parse date: %v", err)
 				}

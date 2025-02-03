@@ -1,12 +1,19 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/nanassito/medicine/pkg/models"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/sheets/v4"
+
+	"github.com/nanassito/medicine/pkg/models"
+	"github.com/nanassito/medicine/pkg/templates"
 )
 
 const (
@@ -28,18 +35,18 @@ func NewMedicineHandler(svc *sheets.Service) (*MedicineHandler, error) {
 		return nil, fmt.Errorf("unable to retrieve document: %v", err)
 	}
 	h := &MedicineHandler{GSheetSvc: svc}
-	fmt.Println(h.getMedicines())
-	fmt.Println(h.getPeople())
 	return h, nil
 }
 
-func (m *MedicineHandler) getPeople() (map[models.Person]models.PersonCfg, error) {
+type peopleMap map[models.Person]models.PersonCfg
+
+func (m *MedicineHandler) getPeople() (peopleMap, error) {
 	val, err := m.GSheetSvc.Spreadsheets.Values.Get(docId, "People!A:C").Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve people from document: %v", err)
 	}
 
-	people := make(map[models.Person]models.PersonCfg)
+	people := make(peopleMap)
 	header := val.Values[0]
 	for _, row := range val.Values[1:] {
 		name := models.Person(row[0].(string))
@@ -54,18 +61,51 @@ func (m *MedicineHandler) getPeople() (map[models.Person]models.PersonCfg, error
 	return people, nil
 }
 
-func (m *MedicineHandler) getMedicines() (map[models.Medicine]*models.MedicineCfg, error) {
+type dosesMap map[models.Person]map[models.Medicine][]time.Time
+
+func (m *MedicineHandler) getDoses() (dosesMap, error) {
+	val, err := m.GSheetSvc.Spreadsheets.Values.Get(docId, "Events!A:C").Do()
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve doses from document: %v", err)
+	}
+
+	doses := make(dosesMap)
+	header := val.Values[0]
+	for _, row := range val.Values[1:] {
+		var dose models.Dose
+		err := models.Unmarshall(row, header, &dose)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := doses[dose.Who]; !ok {
+			doses[dose.Who] = make(map[models.Medicine][]time.Time)
+		}
+		if _, ok := doses[dose.Who][dose.What]; ok {
+			slog.Warn("dose already recorded", "dose", dose)
+		}
+		if _, ok := doses[dose.Who][dose.What]; !ok {
+			doses[dose.Who][dose.What] = make([]time.Time, 0)
+		}
+		doses[dose.Who][dose.What] = append(doses[dose.Who][dose.What], dose.When)
+	}
+
+	return doses, nil
+}
+
+type medicinesMap map[models.Medicine]*models.MedicineCfg
+
+func (m *MedicineHandler) getMedicines() (medicinesMap, error) {
 	val, err := m.GSheetSvc.Spreadsheets.Values.Get(docId, "Medicines!A:G").Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve medicines from document: %v", err)
 	}
 
-	medicines := make(map[models.Medicine]*models.MedicineCfg)
+	medicines := make(medicinesMap)
 	header := val.Values[0]
 	for _, row := range val.Values[1:] {
 		name := models.Medicine(row[0].(string))
 		if _, ok := medicines[name]; !ok {
-			medicines[name] = &models.MedicineCfg{Posology: make([]*models.PosologyEntry, 0)}
+			medicines[name] = &models.MedicineCfg{Posology: make([]models.PosologyEntry, 0)}
 		}
 		var posologyEntry models.PosologyEntry
 		err := models.Unmarshall(row, header, &posologyEntry)
@@ -73,23 +113,60 @@ func (m *MedicineHandler) getMedicines() (map[models.Medicine]*models.MedicineCf
 			return nil, err
 		}
 		medicine := medicines[name]
-		medicine.Posology = append(medicine.Posology, &posologyEntry)
+		medicine.Posology = append(medicine.Posology, posologyEntry)
 	}
 
 	return medicines, nil
 }
 
-func (m *MedicineHandler) getMedicine(name models.Medicine) (*models.MedicineCfg, error) {
-	medicines, err := m.getMedicines()
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve medicines: %v", err)
+func (m *MedicineHandler) getAll(ctx context.Context) (people peopleMap, medicines medicinesMap, doses dosesMap, err error) {
+	group, _ := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		var err error
+		people, err = m.getPeople()
+		if err != nil {
+			return fmt.Errorf("unable to retrieve people: %v", err)
+		}
+		return nil
+	})
+	group.Go(func() error {
+		var err error
+		medicines, err = m.getMedicines()
+		if err != nil {
+			return fmt.Errorf("unable to retrieve medicines: %v", err)
+		}
+		return nil
+	})
+	group.Go(func() error {
+		var err error
+		doses, err = m.getDoses()
+		if err != nil {
+			return fmt.Errorf("unable to retrieve doses: %v", err)
+		}
+		return nil
+	})
+	if err := group.Wait(); err != nil {
+		return nil, nil, nil, err
 	}
-	medicine, ok := medicines[name]
-	if !ok {
-		return nil, fmt.Errorf("medicine %s not found", name)
-	}
-	return medicine, nil
+
+	return people, medicines, doses, nil
 }
+
+// var (
+// 	errMedicineNotFound = errors.New("medicine not found")
+// )
+
+// func (m *MedicineHandler) getMedicine(name models.Medicine) (*models.MedicineCfg, error) {
+// 	medicines, err := m.getMedicines()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("unable to retrieve medicines: %v", err)
+// 	}
+// 	medicine, ok := medicines[name]
+// 	if !ok {
+// 		return nil, errMedicineNotFound
+// 	}
+// 	return medicine, nil
+// }
 
 // func getPosology(person models.PersonCfg, medicine models.MedicineCfg) (models.PosologyEntry, error) {
 // 	sort.Slice(medicine.Posology, func(i, j int) bool {
@@ -188,21 +265,32 @@ func (m *MedicineHandler) getMedicine(name models.Medicine) (*models.MedicineCfg
 // 	w.Write([]byte(response))
 // }
 
-// func (h *MedicineHandler) medicineSelect(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	slog.Info("selection", "vars", vars)
-// 	medicineName := Medicine(vars["medicine"])
-// 	if _, ok := h.Medicine[medicineName]; !ok {
-// 		http.Error(w, "Medicine not found", http.StatusNotFound)
-// 		return
-// 	}
+func (h *MedicineHandler) medicineOverview(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slog.Info("selection", "vars", vars)
 
-// 	response := fmt.Sprintf("youpi")
-// 	w.Write([]byte(response))
-// }
+	people, medicines, _, err := h.getAll(r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("unable to retrieve data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = templates.MedicineOverview.Execute(w, struct {
+		Name      models.Medicine
+		Medicines map[models.Medicine]*models.MedicineCfg
+		People    map[models.Person]models.PersonCfg
+	}{
+		Name:      models.Medicine(vars["medicine"]),
+		Medicines: medicines,
+		People:    people,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("unable to execute template: %v", err), http.StatusInternalServerError)
+	}
+}
 
 func (h *MedicineHandler) Register(r *mux.Router) {
 	// r.HandleFunc("/{medicine}/{person}/take", h.take).Methods(http.MethodGet)
 	// r.HandleFunc("/{medicine}/{person}", h.check).Methods(http.MethodGet)
-	// r.HandleFunc("/{medicine}", h.medicineSelect).Methods(http.MethodGet)
+	r.HandleFunc("/{medicine}", h.medicineOverview).Methods(http.MethodGet)
 }

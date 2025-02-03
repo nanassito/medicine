@@ -22,5 +22,11 @@ type PersonCfg struct {
 }
 
 type MedicineCfg struct {
-	Posology []*PosologyEntry
+	Posology []PosologyEntry
+}
+
+type Dose struct {
+	Who  Person    `sheet:"Person"`
+	What Medicine  `sheet:"Medicine"`
+	When time.Time `sheet:"When,2006-01-02 15:04:05"`
 }

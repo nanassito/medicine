@@ -2,7 +2,12 @@ module github.com/nanassito/medicine
 
 go 1.23.5
 
-require github.com/gorilla/mux v1.8.1
+require (
+	github.com/gorilla/mux v1.8.1
+	golang.org/x/oauth2 v0.25.0
+	golang.org/x/sync v0.10.0
+	google.golang.org/api v0.219.0
+)
 
 require (
 	cloud.google.com/go/auth v0.14.0 // indirect
@@ -21,10 +26,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.32.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/api v0.219.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
