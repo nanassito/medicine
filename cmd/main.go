@@ -21,7 +21,7 @@ func mustGoogleService() *sheets.Service {
 	}
 
 	scopes := []string{
-		"https://www.googleapis.com/auth/spreadsheets.readonly",
+		"https://www.googleapis.com/auth/spreadsheets",
 	}
 	config, err := google.JWTConfigFromJSON(credentials, scopes...)
 	if err != nil {

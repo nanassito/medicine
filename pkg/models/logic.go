@@ -28,6 +28,15 @@ func (s *Snapshot) HasMedicine(medicine Medicine) bool {
 	return ok
 }
 
+func (s *Snapshot) HasPerson(person Person) bool {
+	for _, p := range s.People {
+		if p.Name == person {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Snapshot) CanTake(who Person, what Medicine) (bool, string) {
 	posology, err := s.GetPosology(who, what)
 	if err != nil {

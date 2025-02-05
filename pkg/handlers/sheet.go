@@ -73,9 +73,6 @@ func (m *MedicineHandler) getDoses() (models.DosesMap, error) {
 		if _, ok := doses[dose.Who]; !ok {
 			doses[dose.Who] = make(map[models.Medicine][]time.Time)
 		}
-		if _, ok := doses[dose.Who][dose.What]; ok {
-			slog.Warn("dose already recorded", "dose", dose)
-		}
 		if _, ok := doses[dose.Who][dose.What]; !ok {
 			doses[dose.Who][dose.What] = make([]time.Time, 0)
 		}
@@ -159,4 +156,19 @@ func (m *MedicineHandler) getAll(ctx context.Context) (snapshot models.Snapshot,
 	}
 
 	return snapshot, nil
+}
+
+func (m *MedicineHandler) logDoseIntake(personName models.Person, medicineName models.Medicine) error {
+	slog.Info("dose intake", "person", personName, "medicine", medicineName)
+	resp, err := m.GSheetSvc.Spreadsheets.Values.Append(docId, "Events!A2", &sheets.ValueRange{
+		Values: [][]interface{}{
+			{personName, medicineName, time.Now().Format(time.DateTime)},
+		},
+	}).InsertDataOption("INSERT_ROWS").ValueInputOption("USER_ENTERED").Do()
+	if err != nil {
+		slog.Error("unable to log dose intake", "error", err)
+		return fmt.Errorf("unable to log dose intake: %v", err)
+	}
+	fmt.Println(resp)
+	return nil
 }
