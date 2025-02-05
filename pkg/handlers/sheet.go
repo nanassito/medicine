@@ -37,7 +37,7 @@ func NewMedicineHandler(svc *sheets.Service) (*MedicineHandler, error) {
 }
 
 func (m *MedicineHandler) getPeople() (models.PeopleSlice, error) {
-	val, err := m.GSheetSvc.Spreadsheets.Values.Get(docId, "People!A:C").Do()
+	val, err := m.GSheetSvc.Spreadsheets.Values.Get(docId, "People!A:D").Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve people from document: %v", err)
 	}

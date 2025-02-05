@@ -29,14 +29,14 @@ func (h *MedicineHandler) medicineOverview(w http.ResponseWriter, r *http.Reques
 	data := struct {
 		MedicineName models.Medicine
 		CanTake      []struct {
-			Who     models.Person
+			Who     models.PersonCfg
 			CanTake bool
 			Reason  string
 		}
 	}{
 		MedicineName: medicineName,
 		CanTake: make([]struct {
-			Who     models.Person
+			Who     models.PersonCfg
 			CanTake bool
 			Reason  string
 		}, 0),
@@ -45,10 +45,10 @@ func (h *MedicineHandler) medicineOverview(w http.ResponseWriter, r *http.Reques
 	for _, person := range snapshot.People {
 		canTake, reason := snapshot.CanTake(person.Name, medicineName)
 		data.CanTake = append(data.CanTake, struct {
-			Who     models.Person
+			Who     models.PersonCfg
 			CanTake bool
 			Reason  string
-		}{person.Name, canTake, reason})
+		}{person, canTake, reason})
 	}
 
 	if err = templates.MedicineOverview.Execute(w, data); err != nil {

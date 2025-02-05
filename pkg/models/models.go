@@ -17,9 +17,10 @@ type PosologyEntry struct {
 }
 
 type PersonCfg struct {
-	Name   Person    `sheet:"Name"`
-	Birth  time.Time `sheet:"Birthdate"`
-	Weight int64     `sheet:"Weight"`
+	Name     Person    `sheet:"Name"`
+	Birth    time.Time `sheet:"Birthdate"`
+	Weight   int64     `sheet:"Weight"`
+	PhotoUrl string    `sheet:"Photo"`
 }
 
 type MedicineCfg struct {

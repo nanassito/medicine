@@ -40,6 +40,9 @@ func Unmarshall(row, header []interface{}, v any) error {
 			return fmt.Errorf("header %s not found", columnName)
 		}
 
+		if colIndex >= len(row) {
+			continue // This column isn't populated for this row
+		}
 		cellValue := row[colIndex]
 		fieldValue := val.Field(i)
 
