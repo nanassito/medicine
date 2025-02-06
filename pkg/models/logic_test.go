@@ -9,12 +9,13 @@ import (
 
 func TestCanTake(t *testing.T) {
 	tests := []struct {
-		name       string
-		snapshot   models.Snapshot
-		person     models.Person
-		medicine   models.Medicine
-		wantResult bool
-		wantMsg    string
+		name         string
+		snapshot     models.Snapshot
+		person       models.Person
+		medicine     models.Medicine
+		wantResult   bool
+		wantMsg      string
+		wantPosology models.PosologyEntry
 	}{
 		{
 			name: "Person too young",
@@ -80,10 +81,11 @@ func TestCanTake(t *testing.T) {
 				},
 				Doses: models.DosesMap{},
 			},
-			person:     "John",
-			medicine:   "Aspirin",
-			wantResult: true,
-			wantMsg:    "they never had a dose",
+			person:       "John",
+			medicine:     "Aspirin",
+			wantResult:   true,
+			wantMsg:      "they never had a dose",
+			wantPosology: models.PosologyEntry{OlderThan: 2 * 365 * 24 * time.Hour},
 		},
 		{
 			name: "Last dose too recent",
@@ -111,6 +113,10 @@ func TestCanTake(t *testing.T) {
 			medicine:   "Aspirin",
 			wantResult: false,
 			wantMsg:    "their last dose is too recent",
+			wantPosology: models.PosologyEntry{
+				OlderThan:    2 * 365 * 24 * time.Hour, // 2 years
+				DoseInterval: 24 * time.Hour,           // 1 day interval
+			},
 		},
 		{
 			name: "Too many doses recently",
@@ -131,10 +137,11 @@ func TestCanTake(t *testing.T) {
 					},
 				},
 			},
-			person:     "John",
-			medicine:   "Aspirin",
-			wantResult: false,
-			wantMsg:    "they had too many doses recently",
+			person:       "John",
+			medicine:     "Aspirin",
+			wantResult:   false,
+			wantMsg:      "they had too many doses recently",
+			wantPosology: models.PosologyEntry{OlderThan: 2 * 365 * 24 * time.Hour, MaxDoses: 1, MaxDosesInterval: 48 * time.Hour},
 		},
 		{
 			name: "Can take medicine",
@@ -146,6 +153,7 @@ func TestCanTake(t *testing.T) {
 					"Aspirin": &models.MedicineCfg{
 						Posology: []models.PosologyEntry{
 							{OlderThan: 2 * 365 * 24 * time.Hour, DoseInterval: 24 * time.Hour, MaxDoses: 1, MaxDosesInterval: 48 * time.Hour}, // 2 years, 1 day interval, max 1 dose in 2 days
+							{OlderThan: 4 * 365 * 24 * time.Hour, DoseInterval: 24 * time.Hour, MaxDoses: 1, MaxDosesInterval: 48 * time.Hour}, // 4 years, 1 day interval, max 1 dose in 2 days
 						},
 					},
 				},
@@ -155,18 +163,19 @@ func TestCanTake(t *testing.T) {
 					},
 				},
 			},
-			person:     "John",
-			medicine:   "Aspirin",
-			wantResult: true,
-			wantMsg:    "they haven't had a dose in a while",
+			person:       "John",
+			medicine:     "Aspirin",
+			wantResult:   true,
+			wantMsg:      "they haven't had a dose in a while",
+			wantPosology: models.PosologyEntry{OlderThan: 4 * 365 * 24 * time.Hour, DoseInterval: 24 * time.Hour, MaxDoses: 1, MaxDosesInterval: 48 * time.Hour},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotResult, gotMsg := tt.snapshot.CanTake(tt.person, tt.medicine)
-			if gotResult != tt.wantResult || gotMsg != tt.wantMsg {
-				t.Errorf("CanTake() = (%v, %v), want (%v, %v)", gotResult, gotMsg, tt.wantResult, tt.wantMsg)
+			gotResult, gotMsg, posology := tt.snapshot.CanTake(tt.person, tt.medicine)
+			if gotResult != tt.wantResult || gotMsg != tt.wantMsg || posology != tt.wantPosology {
+				t.Errorf("CanTake() = (%v, %v, %v), want (%v, %v, %v)", gotResult, gotMsg, posology, tt.wantResult, tt.wantMsg, tt.wantPosology)
 			}
 		})
 	}

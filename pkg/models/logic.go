@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"sort"
 	"time"
 )
 
@@ -37,20 +38,23 @@ func (s *Snapshot) HasPerson(person Person) bool {
 	return false
 }
 
-func (s *Snapshot) CanTake(who Person, what Medicine) (bool, string) {
+func (s *Snapshot) CanTake(who Person, what Medicine) (bool, string, PosologyEntry) {
 	posology, err := s.GetPosology(who, what)
 	if err != nil {
 		// If the person is too young or there is some missing data we'll get an error.
-		return false, err.Error()
+		return false, err.Error(), posology
 	}
 
 	// This person never had a dose so it's fine.
 	if _, ok := s.Doses[who][what]; !ok {
-		return true, "they never had a dose"
+		return true, "they never had a dose", posology
 	}
 
 	var lastDose time.Time
 	var numDoses int64
+	sort.Slice(s.Doses[who][what], func(i, j int) bool {
+		return s.Doses[who][what][i].After(s.Doses[who][what][j])
+	})
 	for _, dose := range s.Doses[who][what] {
 		if dose.After(lastDose) {
 			lastDose = dose
@@ -60,13 +64,13 @@ func (s *Snapshot) CanTake(who Person, what Medicine) (bool, string) {
 		}
 	}
 	if time.Since(lastDose) <= posology.DoseInterval {
-		return false, "their last dose is too recent"
+		return false, "their last dose is too recent", posology
 	}
 	if numDoses >= posology.MaxDoses {
-		return false, "they had too many doses recently"
+		return false, "they had too many doses recently", posology
 	}
 
-	return true, "they haven't had a dose in a while"
+	return true, "they haven't had a dose in a while", posology
 }
 
 func (s *Snapshot) GetPosology(personName Person, medicineName Medicine) (PosologyEntry, error) {
@@ -83,6 +87,13 @@ func (s *Snapshot) GetPosology(personName Person, medicineName Medicine) (Posolo
 	if person == nil {
 		return PosologyEntry{}, ErrPersonNotFound
 	}
+
+	sort.Slice(medicine.Posology, func(i, j int) bool {
+		if medicine.Posology[i].OlderThan == medicine.Posology[j].OlderThan {
+			return medicine.Posology[i].HeavierThan > medicine.Posology[j].HeavierThan
+		}
+		return medicine.Posology[i].OlderThan > medicine.Posology[j].OlderThan
+	})
 
 	for _, entry := range medicine.Posology {
 		if time.Since(person.Birth) >= entry.OlderThan || (person.Weight >= entry.HeavierThan && entry.HeavierThan > 0) {

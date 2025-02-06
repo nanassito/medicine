@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -78,15 +77,6 @@ func (m *MedicineHandler) getDoses() (models.DosesMap, error) {
 		}
 		doses[dose.Who][dose.What] = append(doses[dose.Who][dose.What], dose.When)
 	}
-
-	for _, personDoses := range doses {
-		for _, medicineDoses := range personDoses {
-			sort.Slice(medicineDoses, func(i, j int) bool {
-				return medicineDoses[i].After(medicineDoses[j])
-			})
-		}
-	}
-
 	return doses, nil
 }
 
@@ -110,16 +100,6 @@ func (m *MedicineHandler) getMedicines() (models.MedicinesMap, error) {
 		}
 		medicine := medicines[name]
 		medicine.Posology = append(medicine.Posology, posologyEntry)
-	}
-
-	for _, medicine := range medicines {
-		// Reverse sort so we can iterate from older to younger.
-		sort.Slice(medicine.Posology, func(i, j int) bool {
-			if medicine.Posology[i].OlderThan == medicine.Posology[j].OlderThan {
-				return medicine.Posology[i].HeavierThan > medicine.Posology[j].HeavierThan
-			}
-			return medicine.Posology[i].OlderThan > medicine.Posology[j].OlderThan
-		})
 	}
 
 	return medicines, nil

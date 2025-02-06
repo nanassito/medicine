@@ -33,6 +33,7 @@ func (h *MedicineHandler) medicineOverview(w http.ResponseWriter, r *http.Reques
 			Who     models.PersonCfg
 			CanTake bool
 			Reason  string
+			Dose    string
 		}
 	}{
 		MedicineName: medicineName,
@@ -40,16 +41,18 @@ func (h *MedicineHandler) medicineOverview(w http.ResponseWriter, r *http.Reques
 			Who     models.PersonCfg
 			CanTake bool
 			Reason  string
+			Dose    string
 		}, 0),
 	}
 
 	for _, person := range snapshot.People {
-		canTake, reason := snapshot.CanTake(person.Name, medicineName)
+		canTake, reason, posology := snapshot.CanTake(person.Name, medicineName)
 		data.CanTake = append(data.CanTake, struct {
 			Who     models.PersonCfg
 			CanTake bool
 			Reason  string
-		}{person, canTake, reason})
+			Dose    string
+		}{person, canTake, reason, posology.Dose})
 	}
 
 	if err = templates.MedicineOverview.Execute(w, data); err != nil {
@@ -78,7 +81,7 @@ func (h *MedicineHandler) take(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canTake, reason := snapshot.CanTake(personName, medicineName)
+	canTake, reason, _ := snapshot.CanTake(personName, medicineName)
 	if !canTake {
 		w.Write([]byte(fmt.Sprintf("Do NOT take this ! %s", reason)))
 		return
