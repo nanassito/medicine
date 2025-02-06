@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 
 	"github.com/gorilla/mux"
 
@@ -91,7 +92,30 @@ func (h *MedicineHandler) take(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/%s", medicineName), http.StatusSeeOther)
 }
 
+func (h *MedicineHandler) list(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := h.getAll(r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("unable to retrieve data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	medicines := make([]string, 0)
+	for medicine := range snapshot.Medicines {
+		medicines = append(medicines, string(medicine))
+	}
+	sort.Strings(medicines)
+	data := struct {
+		Medicines []string
+	}{
+		Medicines: medicines,
+	}
+	if err = templates.List.Execute(w, data); err != nil {
+		http.Error(w, fmt.Sprintf("unable to execute template: %v", err), http.StatusInternalServerError)
+	}
+}
+
 func (h *MedicineHandler) Register(r *mux.Router) {
 	r.HandleFunc("/{medicine}/{person}", h.take).Methods(http.MethodGet)
 	r.HandleFunc("/{medicine}", h.medicineOverview).Methods(http.MethodGet)
+	r.HandleFunc("/", h.list).Methods(http.MethodGet)
 }
