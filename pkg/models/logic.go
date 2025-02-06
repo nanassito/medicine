@@ -59,7 +59,7 @@ func (s *Snapshot) CanTake(who Person, what Medicine) (bool, string) {
 			numDoses++
 		}
 	}
-	if time.Since(lastDose) < posology.DoseInterval {
+	if time.Since(lastDose) <= posology.DoseInterval {
 		return false, "their last dose is too recent"
 	}
 	if numDoses >= posology.MaxDoses {
@@ -85,7 +85,7 @@ func (s *Snapshot) GetPosology(personName Person, medicineName Medicine) (Posolo
 	}
 
 	for _, entry := range medicine.Posology {
-		if time.Since(person.Birth) >= entry.OlderThan || person.Weight >= entry.HeavierThan {
+		if time.Since(person.Birth) >= entry.OlderThan || (person.Weight >= entry.HeavierThan && entry.HeavierThan > 0) {
 			return entry, nil
 		}
 	}

@@ -22,7 +22,7 @@ var MedicineOverview = template.Must(template.New("MedicineOverview").Funcs(temp
 					<a href="./{{$.MedicineName}}/{{.Who.Name}}">
 						<img class="pure-img" src="{{.Who.PhotoUrl}}" alt="{{.Who.Name}}">
 					</a>
-					<figcaption>{{.Reason}}</figcaption>
+					<figcaption style="text-align:center; padding-top:10px; padding-bottom:10px; background-color:{{if .CanTake}}#60A561{{else}}#F4442E{{end}};">{{.Reason}}</figcaption>
 				</figure>
 			</div>
 		{{ end }}

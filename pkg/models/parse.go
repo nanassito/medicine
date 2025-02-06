@@ -69,7 +69,7 @@ func Unmarshall(row, header []interface{}, v any) error {
 				if format == "" {
 					format = time.DateOnly
 				}
-				parsedTime, err := time.Parse(format, cellValue.(string))
+				parsedTime, err := time.ParseInLocation(format, cellValue.(string), time.Local)
 				if err != nil {
 					return fmt.Errorf("unable to parse date: %v", err)
 				}
