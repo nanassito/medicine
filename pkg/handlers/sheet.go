@@ -162,7 +162,7 @@ func (m *MedicineHandler) logDoseIntake(personName models.Person, medicineName m
 	slog.Info("dose intake", "person", personName, "medicine", medicineName)
 	resp, err := m.GSheetSvc.Spreadsheets.Values.Append(docId, "Events!A2", &sheets.ValueRange{
 		Values: [][]interface{}{
-			{personName, medicineName, time.Now().Format(time.DateTime)},
+			{personName, medicineName, time.Now().UTC().Format(time.DateTime)},
 		},
 	}).InsertDataOption("INSERT_ROWS").ValueInputOption("USER_ENTERED").Do()
 	if err != nil {
