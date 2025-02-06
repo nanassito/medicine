@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/nanassito/medicine/pkg/handlers"
@@ -14,16 +17,35 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-func mustGoogleService() *sheets.Service {
-	credentials, err := os.ReadFile("/Users/dorian.jaminaisgrellier/Downloads/medicine-449623-ba166d49b718.json")
+var (
+	creds = flag.String("creds", "../creds.json", "Google credential file.")
+)
+
+func mustGetCreds() []byte {
+	if creds == nil {
+		log.Fatal("missing credentials")
+	}
+	if strings.HasPrefix(*creds, "../") || strings.HasPrefix(*creds, "./") {
+		cwd, err := os.Getwd()
+		if err != nil {
+			log.Fatal("unable to get current working directory:", err)
+		}
+		*creds = filepath.Join(cwd, *creds)
+	}
+	credentials, err := os.ReadFile(*creds)
 	if err != nil {
 		log.Fatal("unable to read key file:", err)
 	}
+	return credentials
+}
+
+func mustGoogleService() *sheets.Service {
+	flag.Parse()
 
 	scopes := []string{
 		"https://www.googleapis.com/auth/spreadsheets",
 	}
-	config, err := google.JWTConfigFromJSON(credentials, scopes...)
+	config, err := google.JWTConfigFromJSON(mustGetCreds(), scopes...)
 	if err != nil {
 		log.Fatal("unable to create JWT configuration:", err)
 	}
