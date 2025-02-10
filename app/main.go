@@ -68,5 +68,5 @@ func main() {
 	handler.Register(r)
 
 	http.Handle("/", r)
-	http.ListenAndServe(":7564", nil)
+	http.ListenAndServe(":80", nil)
 }
