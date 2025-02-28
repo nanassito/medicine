@@ -1,8 +1,9 @@
 module github.com/nanassito/medicine
 
-go 1.23.5
+go 1.24.0
 
 require (
+	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/mux v1.8.1
 	golang.org/x/oauth2 v0.25.0
 	golang.org/x/sync v0.10.0

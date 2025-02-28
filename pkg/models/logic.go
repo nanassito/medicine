@@ -38,39 +38,63 @@ func (s *Snapshot) HasPerson(person Person) bool {
 	return false
 }
 
-func (s *Snapshot) CanTake(who Person, what Medicine) (bool, string, PosologyEntry) {
+func (s *Snapshot) GetPerson(person Person) PersonCfg {
+	for _, p := range s.People {
+		if p.Name == person {
+			return p
+		}
+	}
+	return PersonCfg{}
+}
+
+func (s *Snapshot) CanTake(who Person, what Medicine) (canTake bool, reason string, posology PosologyEntry, waitFor time.Duration) {
 	posology, err := s.GetPosology(who, what)
+	waitFor = time.Duration(0)
+	reason = "This is a bug"
+	canTake = false
+
 	if err != nil {
+		reason = err.Error()
 		// If the person is too young or there is some missing data we'll get an error.
-		return false, err.Error(), posology
+		return
 	}
 
 	// This person never had a dose so it's fine.
 	if _, ok := s.Doses[who][what]; !ok {
-		return true, "they never had a dose", posology
+		canTake = true
+		reason = "they never had a dose"
+		return
 	}
 
-	var lastDose time.Time
-	var numDoses int64
+	doses := []time.Time{}
 	sort.Slice(s.Doses[who][what], func(i, j int) bool {
+		// Sort from most recent to oldest
 		return s.Doses[who][what][i].After(s.Doses[who][what][j])
 	})
 	for _, dose := range s.Doses[who][what] {
-		if dose.After(lastDose) {
-			lastDose = dose
-		}
 		if dose.After(time.Now().Add(-posology.MaxDosesInterval)) {
-			numDoses++
+			doses = append(doses, dose)
 		}
 	}
-	if time.Since(lastDose) <= posology.DoseInterval {
-		return false, "their last dose is too recent", posology
-	}
-	if numDoses >= posology.MaxDoses {
-		return false, "they had too many doses recently", posology
+	// Ok now we know the person can generally take this medicine.
+	// Let's check if they haven't over done it.
+	canTake = true
+	reason = "they haven't had a dose in a while"
+
+	if len(doses) > 0 && time.Since(doses[0]) <= posology.DoseInterval {
+		canTake = false
+		reason = "their last dose is too recent"
+		waitFor = posology.DoseInterval - time.Since(doses[0])
 	}
 
-	return true, "they haven't had a dose in a while", posology
+	if len(doses) > 0 && len(doses) >= int(posology.MaxDoses) {
+		canTake = false
+		reason = "they had too many doses recently"
+		oldestRelevantDose := doses[int(posology.MaxDoses)-1]
+		waitFor = max(waitFor, posology.MaxDosesInterval-time.Since(oldestRelevantDose))
+	}
+
+	return
 }
 
 func (s *Snapshot) GetPosology(personName Person, medicineName Medicine) (PosologyEntry, error) {

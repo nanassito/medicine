@@ -16,16 +16,12 @@ var MedicineOverview = template.Must(template.New("MedicineOverview").Funcs(temp
 <body>
 	<h1>{{.MedicineName}}</h1>
 	<div class="pure-g">
-		{{ range .CanTake }}
+		{{ range .People }}
 			<div class="pure-u-1-2">
 				<figure>
-					<a href="./{{$.MedicineName}}/{{.Who.Name}}">
-						<img class="pure-img" src="{{.Who.PhotoUrl}}" alt="{{.Who.Name}}">
+					<a href="/{{$.MedicineName}}/{{.Name}}">
+						<img class="pure-img" src="{{.PhotoUrl}}" alt="{{.Name}}">
 					</a>
-					<figcaption style="text-align:center; padding-top:10px; padding-bottom:10px; background-color:{{if .CanTake}}#60A561{{else}}#F4442E{{end}};">
-						<p>Dose: {{.Dose}}</p>
-						<p>{{.Reason}}</p>
-					</figcaption>
 				</figure>
 			</div>
 		{{ end }}

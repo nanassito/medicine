@@ -4,6 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/nanassito/medicine/pkg/models"
 )
 
@@ -16,6 +19,7 @@ func TestCanTake(t *testing.T) {
 		wantResult   bool
 		wantMsg      string
 		wantPosology models.PosologyEntry
+		wantWaitFor  time.Duration
 	}{
 		{
 			name: "Person too young",
@@ -97,8 +101,10 @@ func TestCanTake(t *testing.T) {
 					"Aspirin": &models.MedicineCfg{
 						Posology: []models.PosologyEntry{
 							{
-								OlderThan:    2 * 365 * 24 * time.Hour, // 2 years
-								DoseInterval: 24 * time.Hour,           // 1 day interval
+								OlderThan:        2 * 365 * 24 * time.Hour, // 2 years
+								DoseInterval:     24 * time.Hour,           // 1 day interval
+								MaxDosesInterval: 24 * time.Hour,           // 1 day interval
+								MaxDoses:         1000,
 							},
 						},
 					},
@@ -114,9 +120,12 @@ func TestCanTake(t *testing.T) {
 			wantResult: false,
 			wantMsg:    "their last dose is too recent",
 			wantPosology: models.PosologyEntry{
-				OlderThan:    2 * 365 * 24 * time.Hour, // 2 years
-				DoseInterval: 24 * time.Hour,           // 1 day interval
+				OlderThan:        2 * 365 * 24 * time.Hour, // 2 years
+				DoseInterval:     24 * time.Hour,           // 1 day interval
+				MaxDosesInterval: 24 * time.Hour,           // 1 day interval
+				MaxDoses:         1000,
 			},
+			wantWaitFor: 12 * time.Hour,
 		},
 		{
 			name: "Too many doses recently",
@@ -126,7 +135,7 @@ func TestCanTake(t *testing.T) {
 				},
 				Medicines: models.MedicinesMap{
 					"Aspirin": &models.MedicineCfg{
-						Posology: []models.PosologyEntry{
+						Posology: []models.PosologyEntry{ // 37 hours interval
 							{OlderThan: 2 * 365 * 24 * time.Hour, MaxDoses: 1, MaxDosesInterval: 48 * time.Hour}, // 2 years, max 1 dose in 2 days
 						},
 					},
@@ -142,6 +151,7 @@ func TestCanTake(t *testing.T) {
 			wantResult:   false,
 			wantMsg:      "they had too many doses recently",
 			wantPosology: models.PosologyEntry{OlderThan: 2 * 365 * 24 * time.Hour, MaxDoses: 1, MaxDosesInterval: 48 * time.Hour},
+			wantWaitFor:  24 * time.Hour,
 		},
 		{
 			name: "Can take medicine",
@@ -173,9 +183,9 @@ func TestCanTake(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotResult, gotMsg, posology := tt.snapshot.CanTake(tt.person, tt.medicine)
-			if gotResult != tt.wantResult || gotMsg != tt.wantMsg || posology != tt.wantPosology {
-				t.Errorf("CanTake() = (%v, %v, %v), want (%v, %v, %v)", gotResult, gotMsg, posology, tt.wantResult, tt.wantMsg, tt.wantPosology)
+			gotResult, gotMsg, posology, waitFor := tt.snapshot.CanTake(tt.person, tt.medicine)
+			if diffWaitFor := cmp.Diff(float64(waitFor), float64(tt.wantWaitFor), cmpopts.EquateApprox(0.01, 0)); gotResult != tt.wantResult || gotMsg != tt.wantMsg || posology != tt.wantPosology || diffWaitFor != "" {
+				t.Errorf("CanTake() = (%v, %v, %v, %v), want (%v, %v, %v, %v)", gotResult, gotMsg, posology, waitFor, tt.wantResult, tt.wantMsg, tt.wantPosology, tt.wantWaitFor)
 			}
 		})
 	}
