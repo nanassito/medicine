@@ -18,7 +18,7 @@ var MedicineFor = template.Must(template.New("MedicineFor").Funcs(template.FuncM
 	<img class="pure-img" src="{{.Who.PhotoUrl}}" alt="{{.Who.Name}}">
 	<div style="text-align:center; padding-top:10px; padding-bottom:10px; background-color:{{if .CanTake}}#60A561{{else if lt .WaitForPct 0.1}}#FFB400{{else}}#F4442E{{end}};">
 		<p>{{.Reason}}</p>
-		{{if .CanTake}}{{else}}<p>DO not take for another {{.WaitFor}}</p>{{end}}
+		{{if .CanTake}}{{else}}<p>Do NOT take for another {{.WaitFor}}</p>{{end}}
 	</div>
 	<h3>Posology</h3>
 	<ul>
