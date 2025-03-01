@@ -22,8 +22,8 @@ var MedicineFor = template.Must(template.New("MedicineFor").Funcs(template.FuncM
 	</div>
 	<h3>Posology</h3>
 	<ul>
-		<li>Dose: {{.Posology.MaxDoses}} every {{.Posology.DoseInterval}}</li>
-		<li>No more than {{.Posology.MaxDoses}} doses every {{.Posology.MaxDosesInterval}}</li>
+		<li>Dose: {{.Posology.Dose}} every {{.Posology.DoseInterval}}</li>
+		<li>No more than {{.Posology.MaxDoses}} times over {{.Posology.MaxDosesInterval}}</li>
 	</ul>
 	<a style="width: 100%" class="pure-button pure-button-primary" href="/{{.MedicineName}}/{{.Who.Name}}/take"><h2>Take</h2></a>
 </body>
