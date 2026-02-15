@@ -9,7 +9,13 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "app"
+            "program": "app",
+            "args": [
+                "-creds",
+                "../creds.json",
+                "-port",
+                "8080"
+            ]
         }
     ]
 }
