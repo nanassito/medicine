@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -19,6 +20,7 @@ import (
 
 var (
 	creds = flag.String("creds", "../creds.json", "Google credential file.")
+	port  = flag.Int("port", 80, "Port to listen on.")
 )
 
 func mustGetCreds() []byte {
@@ -68,5 +70,9 @@ func main() {
 	handler.Register(r)
 
 	http.Handle("/", r)
-	http.ListenAndServe(":80", nil)
+	addr := strconv.Itoa(*port)
+	slog.Info("listening", "addr", "http://localhost:"+addr)
+	if err := http.ListenAndServe(":"+addr, nil); err != nil {
+		log.Fatal(err)
+	}
 }
